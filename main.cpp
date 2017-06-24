@@ -108,7 +108,6 @@ cout << "Binding"<< endl;
             perror("Error send failed");
         }
 
-        // Закрываем соединение к клиентом
         close(client_socket);
         close(listen_socket);
         return 0;
