@@ -7,12 +7,16 @@
 #include <cstring>
 #include <arpa/inet.h>
 #include <unistd.h>
+#include <fstream>
 
 
 using namespace std;
 
 int main()
 {
+    string filename; //= "/home/kateryna/WS/index.html";
+    cout << "Enter path to html file: ";
+    cin >> filename;
     int bufSize = 1024;
 
     char buffer[bufSize];
@@ -23,6 +27,7 @@ int main()
     // Шаблон для инициализации структуры адреса
     struct sockaddr_in server_addr;
 
+    cout << "create listening socket"<< endl;
 
     // AF_INET определяет, что используется сеть для работы с сокетом
     //  SOCK_STREAM Задаем потоковый тип сокета
@@ -35,10 +40,10 @@ int main()
     }
 
     server_addr.sin_family = AF_INET;
-    server_addr.sin_port = htons(8080); // HTTP-сервер будет висеть на 8000-м порту локалхоста
+    server_addr.sin_port = htons(8008); // HTTP-сервер будет висеть на 8000-м порту локалхоста
     server_addr.sin_addr.s_addr=inet_addr("127.0.0.1");
 
-
+cout << "Binding"<< endl;
     /* Now bind the host address using bind() call.*/
     if (bind(listen_socket, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0) {
         perror("ERROR on binding");
@@ -47,16 +52,18 @@ int main()
 
     // 5 - число одновременных TCP-соединений
 
+    cout << "Listening"<< endl;
     listen(listen_socket,5);
 
 
     // Принимаем входящие соединения
+    cout << "Accept"<< endl;
     int client_socket = accept(listen_socket, NULL, NULL);
     if (client_socket < 0) {
-       perror("ERROR on accept");
-       return 0;
+        perror("ERROR on accept");
+        return 0;
     }
-
+    cout << "Go to http://127.0.0.1:8008/" << endl;
     int result = recv(client_socket, buffer, bufSize, 0);
 
     stringstream response; // сюда будет записываться ответ клиенту
@@ -70,35 +77,37 @@ int main()
         // соединение закрыто клиентом
         cout << "connection closed...\n";
     } else if (result > 0) {
+        cout << "Response"<< endl;
         // Мы знаем фактический размер полученных данных, поэтому ставим метку конца строки
         // В буфере запроса.
         buffer[result] = '\0';
 
-        // Данные успешно получены
-        // формируем тело ответа (HTML)
-        response_body << "<title>Test C++ HTTP Server</title>\n"
-            << "<h1>Test page</h1>\n"
-            << "<p>This is body of the test page...</p>\n"
-            << "<h2>Request headers</h2>\n"
-            << "<pre>" << buffer << "</pre>\n"
-            << "<em><small>Test C++ Http Server</small></em>\n";
 
-        // Формируем весь ответ вместе с заголовками
+        char *buff;
+        long size;
+        ifstream file(filename, ios::in|ios::binary|ios::ate);
+        size = file.tellg();
+        file.seekg (0, ios::beg);
+        buff = new char[size];
+        file.read (buff, size);
+        file.close();
+
+        response_body << buff << buffer;
         response << "HTTP/1.1 200 OK\r\n"
-            << "Version: HTTP/1.1\r\n"
-            << "Content-Type: text/html; charset=utf-8\r\n"
-            << "Content-Length: " << response_body.str().length()
-            << "\r\n\r\n"
-            << response_body.str();
-
+                 << "Version: HTTP/1.1\r\n"
+                 << "Content-Type: text/html; charset=utf-8\r\n"
+                 << "Content-Length: " << response_body.str().length()
+                 << "\r\n\r\n"
+                 << response_body.str();
         // Отправляем ответ клиенту с помощью функции send
         result = send(client_socket, response.str().c_str(),
-            response.str().length(), 0);
+                      response.str().length(), 0);
 
         if (result < 0) {
             // произошла ошибка при отправле данных
             perror("Error send failed");
         }
+
         // Закрываем соединение к клиентом
         close(client_socket);
         close(listen_socket);
