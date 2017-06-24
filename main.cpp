@@ -20,43 +20,33 @@ int main()
     int bufSize = 1024;
 
     char buffer[bufSize];
-
-    // структура, хранящая информацию
-    // об IP-адресе  слущающего сокета
-
-    // Шаблон для инициализации структуры адреса
+    // structure for information about ip of listening socket
     struct sockaddr_in server_addr;
 
     cout << "create listening socket"<< endl;
 
-    // AF_INET определяет, что используется сеть для работы с сокетом
-    //  SOCK_STREAM Задаем потоковый тип сокета
-    // Используем протокол TCP
-    int listen_socket = socket(AF_INET, SOCK_STREAM,IPPROTO_TCP);
-    // Если создание сокета завершилось с ошибкой, выводим сообщение,
+    // AF_INET for network sockets work
+    //  SOCK_STREAM stream type of socket
+    int listen_socket = socket(AF_INET, SOCK_STREAM,IPPROTO_TCP); // TCP protocol
     if (listen_socket < 0) {
         perror("ERROR opening socket");
         return 0;
     }
 
     server_addr.sin_family = AF_INET;
-    server_addr.sin_port = htons(8008); // HTTP-сервер будет висеть на 8000-м порту локалхоста
+    server_addr.sin_port = htons(8008); // port of localhost
     server_addr.sin_addr.s_addr=inet_addr("127.0.0.1");
 
 cout << "Binding"<< endl;
-    /* Now bind the host address using bind() call.*/
+    //bind the host
     if (bind(listen_socket, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0) {
         perror("ERROR on binding");
         return 0;
     }
 
-    // 5 - число одновременных TCP-соединений
-
     cout << "Listening"<< endl;
-    listen(listen_socket,5);
+    listen(listen_socket,5); // number of tcp connections
 
-
-    // Принимаем входящие соединения
     cout << "Accept"<< endl;
     int client_socket = accept(listen_socket, NULL, NULL);
     if (client_socket < 0) {
@@ -66,21 +56,17 @@ cout << "Binding"<< endl;
     cout << "Go to http://127.0.0.1:8008/" << endl;
     int result = recv(client_socket, buffer, bufSize, 0);
 
-    stringstream response; // сюда будет записываться ответ клиенту
-    stringstream response_body; // тело ответа
+    stringstream response; 
+    stringstream response_body; 
 
     if (result < 0) {
-        // ошибка получения данных
         perror("ERROR on recv");
         return 0;
     } else if (result == 0) {
-        // соединение закрыто клиентом
         cout << "connection closed...\n";
     } else if (result > 0) {
         cout << "Response"<< endl;
-        // Мы знаем фактический размер полученных данных, поэтому ставим метку конца строки
-        // В буфере запроса.
-        buffer[result] = '\0';
+        buffer[result] = '\0'; // in the end because we know the lenght 
 
 
         char *buff;
@@ -99,12 +85,10 @@ cout << "Binding"<< endl;
                  << "Content-Length: " << response_body.str().length()
                  << "\r\n\r\n"
                  << response_body.str();
-        // Отправляем ответ клиенту с помощью функции send
         result = send(client_socket, response.str().c_str(),
                       response.str().length(), 0);
 
         if (result < 0) {
-            // произошла ошибка при отправле данных
             perror("Error send failed");
         }
 
